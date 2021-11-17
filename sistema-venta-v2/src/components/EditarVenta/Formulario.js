@@ -1,6 +1,9 @@
 import { TextField, Button } from "@material-ui/core";
 import { useState } from "react";
 import { makeStyles } from '@material-ui/core/styles';
+import { apiBaseUrl } from '../../utils/Api';
+import { Autocomplete } from "@mui/material";
+import { listarUsuarios } from "../../services/Global";
 
 const obtenerEstilos = makeStyles(theme => ({
     root: {
@@ -28,12 +31,24 @@ const Formulario = ({ cerrarFormulario, ventaEditada }) => {
     const [idProducto, setIdProducto] = useState(ventaEditada.idProducto);
     const [cantidad, setCantidad] = useState(ventaEditada.cantidad);
     const [fecha, setFecha] = useState(ventaEditada.fecha);
-    const [idCliente, setIdCliente] = useState(ventaEditada.idCliente);
-    const [idUsuario, setIdUsuario] = useState(ventaEditada.idUsuario);
+    const [idCliente, setIdCliente] = useState(ventaEditada.clienteDocumento);
+    const [usuario, setUsuario] = useState(ventaEditada.usuario);
+    const [nombreCliente, setNombreCliente] = useState(ventaEditada.nombreCliente)
+    const [estadoListado, setEstadoListado] = useState(true);
+    const [usuarios, setUsuarios] = useState([]);
 
-    const guardar = () => {
+    async function obtenerUsuarios() {
+        const usuariosT = await listarUsuarios();
+        setUsuarios(usuariosT);
+        setEstadoListado(false);
+    }
 
-        fetch("http://localhost:3010/ventas",
+    if (estadoListado) {
+        obtenerUsuarios();
+    }
+    const guardar = (e) => {
+
+        fetch(`${apiBaseUrl}/ventas`,
             {
                 method: 'post',
                 headers: {
@@ -43,15 +58,17 @@ const Formulario = ({ cerrarFormulario, ventaEditada }) => {
                 body: JSON.stringify({
                     Id: ventaEditada.id,
                     IdCliente: idCliente,
+                    NombreCliente: nombreCliente,
                     Fecha: fecha,
                     IdProducto: idProducto,
                     Cantidad: cantidad,
-                    IdUsuario: idUsuario
+                    IdUsuario: usuario.id,
+                    NombreUsuario: usuario.nombre
                 })
             })
             .then((res) => res.json())
             .then((json) => {
-                window.alert(`Respuesta: ${json.venta}`);
+                //window.alert(`Respuesta: ${json.venta}`);
                 cerrarFormulario();
             })
             .catch(function (error) {
@@ -59,8 +76,14 @@ const Formulario = ({ cerrarFormulario, ventaEditada }) => {
             });
     }
 
+    const seleccionarUsuario = (e, usuarioEscogido) => {
+        setUsuario(usuarioEscogido);
+    }
+    
+
     return (
-        <form className={estilos.root} onSubmit={guardar}>
+        <form className={estilos.root}  >
+            {ventaEditada.id == "-1" ? <h3>Agregar Venta</h3> : <h3>Modificar Venta {ventaEditada.id}</h3>}
             <TextField
                 label="ID Producto"
                 variant="filled"
@@ -81,6 +104,7 @@ const Formulario = ({ cerrarFormulario, ventaEditada }) => {
                 variant="filled"
                 required
                 value={fecha}
+                placeholder="AAAA-MM-DD"
                 onChange={(e) => { setFecha(e.target.value) }}
             />
             <TextField
@@ -91,17 +115,32 @@ const Formulario = ({ cerrarFormulario, ventaEditada }) => {
                 onChange={(e) => { setIdCliente(e.target.value) }}
             />
             <TextField
-                label="Encargado de Venta"
+                label="Nombre Cliente"
                 variant="filled"
                 required
-                value={idUsuario}
-                onChange={(e) => { setIdUsuario(e.target.value) }}
+                value={nombreCliente}
+                onChange={(e) => { setNombreCliente(e.target.value) }}
             />
+            <Autocomplete
+                value={usuario}
+                options={usuarios}
+                required
+                getOptionLabel={(option) => option.nombre}
+                onChange={seleccionarUsuario}
+                renderInput={(params) => (
+                    <TextField
+                        {...params}
+                        label="Encargado de Venta"
+
+                    />
+                )}
+            />
+
             <div>
                 <Button variant="contained" onClick={cerrarFormulario}>
                     Cancelar
                 </Button>
-                <Button variant="contained" type="submit" color="primary">
+                <Button variant="contained" onClick={guardar} color="primary">
                     Aceptar
                 </Button>
             </div>

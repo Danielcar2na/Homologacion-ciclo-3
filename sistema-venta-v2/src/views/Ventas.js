@@ -1,21 +1,30 @@
 import { DataGrid } from '@material-ui/data-grid';
 import React, { useState } from 'react';
-//import { Button } from "@material-ui/core";
-import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ModalEditar from '../components/EditarVenta/Modal';
 import Confirmacion from '../components/Confirmacion';
-
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+// import ToolbarCRUD from '../components/ToolbarCRUD';
+import Paper from '@mui/material/Paper';
+import InputBase from '@mui/material/InputBase';
+import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+// ICONOS
+import IconButton from '@mui/material/IconButton';
+import SearchIcon from '@mui/icons-material/Search';
+import MenuItem from '@mui/material/MenuItem';
 import EditIcon from '@mui/icons-material/Edit';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
-import SearchIcon from '@mui/icons-material/Search';
-import { styled, alpha } from '@mui/material/styles';
-import InputBase from '@mui/material/InputBase';
+import DeleteIcon from '@mui/icons-material/Delete';
+// Globals
+import { VentaL, VentaA, listarVentas, buscarVentas} from '../services/Global';
+import { apiBaseUrl } from '../utils/Api';
 
-
-
+const tipos = [
+    { label: 'Id Venta', value: 0 },
+    { label: 'Nombre Cliente', value: 1 },
+    { label: 'Documento Cliente', value: 2 }
+];
 
 const columnas = [
     { field: "id", headerName: "ID Venta", width: 135 },
@@ -26,72 +35,8 @@ const columnas = [
     { field: "fecha", headerName: "Fecha", width: 200 },
     { field: "clienteDocumento", headerName: "Cliente ID", width: 160 },
     { field: "nombreCliente", headerName: "Cliente", width: 300 },
-    { field: "nombreUsuario", headerName: "Encargado", width: 300 },
+    {field: "nombreUsuario", headerName: "Encargado", width: 300},
 ]
-
-var VentaL = function (id, idProducto, nombreProducto, valorUnitario,
-    cantidad, fecha, clienteDocumento, nombreCliente, nombreUsuario) {
-    this.id = id;
-    this.idProducto = idProducto;
-    this.nombreProducto = nombreProducto;
-    this.valorUnitario = valorUnitario;
-    this.cantidad = cantidad;
-    this.fecha = fecha;
-    this.clienteDocumento = clienteDocumento;
-    this.nombreCliente = nombreCliente;
-    this.nombreUsuario = nombreUsuario;
-}
-
-var VentaA = function (id, idCliente, clienteDocumento, fecha, idUsuario, idProducto, cantidad) {
-    this.id = id;
-    this.idProducto = idProducto;
-    this.cantidad = cantidad;
-    this.fecha = fecha;
-    this.idCliente = idCliente;
-    this.idUsuario = idUsuario
-}
-
-const Search = styled('div')(({ theme }) => ({
-    position: 'relative',
-    borderRadius: theme.shape.borderRadius,
-    backgroundColor: alpha(theme.palette.common.white, 0.15),
-    '&:hover': {
-        backgroundColor: alpha(theme.palette.common.white, 0.25),
-    },
-    marginLeft: 0,
-    width: '100%',
-    [theme.breakpoints.up('sm')]: {
-        marginLeft: theme.spacing(1),
-        width: 'auto',
-    },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-    padding: theme.spacing(0, 2),
-    height: '100%',
-    position: 'absolute',
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-    color: 'inherit',
-    '& .MuiInputBase-input': {
-        padding: theme.spacing(1, 1, 1, 0),
-        // vertical padding + font size from searchIcon
-        paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-        transition: theme.transitions.create('width'),
-        width: '100%',
-        [theme.breakpoints.up('sm')]: {
-            width: '12ch',
-            '&:focus': {
-                width: '20ch',
-            },
-        },
-    },
-}));
 
 const theme = createTheme({
     status: {
@@ -112,7 +57,6 @@ const theme = createTheme({
 
 
 const Ventas = () => {
-    
 
     const [ventas, setVentas] = useState([]);
 
@@ -124,40 +68,93 @@ const Ventas = () => {
 
     const [estadoConfirmacion, setEstadoConfirmacion] = useState(false);
 
-    const obtenerVentas = () => {
-        // Consultar la lista de ventas desde la API
-        fetch("http://localhost:3010/ventas", { method: "get" })
-            .then((res) => res.json())
+    const [estadoBusqueda, setEstadoBusqueda] = useState(false);
+
+    const [tipo, setTipo] = useState(0);
+
+    const [dato, setDato] = useState('');
+
+    const buscar = () => {
+        if(dato){
+            setEstadoBusqueda(true);
+        }
+        else{
+            setEstadoListado(true);
+        }
+    }
+
+    async function obtenerBusqueda() {
+        const ventasT = await buscarVentas();
+        setVentas(ventasT);
+        // window.alert(`VENTAS: ${ventas}`);
+        setEstadoBusqueda(false);
+    }
+
+    const buscarVentas = () => {
+        return fetch(`http://localhost:3010/ventas/${tipo}`,
+            {
+                method: 'post',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    Dato: dato
+                })
+            })
+            .then((res) => {
+                if(!res.ok) {
+                    throw new Error(`HTTP error, estado = ${res.status}`);
+                }
+                return res.json();
+            })
             .then((json) => {
-                var ventasT = [];
+                
+                var busquedaT = [];
                 json.map((item) => {
-                    ventasT.push(new VentaL(
+                    const [fecha, hora] = item.Fecha.toString().split('T');
+                    busquedaT.push( new VentaL(
                         item.Id,
                         item.IdProducto,
                         item.NombreProducto,
                         item.ValorUnitario,
                         item.Cantidad,
-                        item.Fecha,
+                        fecha,
                         item.ClienteDocumento,
                         item.NombreCliente,
-                        item.NombreUsuario
-                    ));
+                        item.IdUsuario,
+                        item.NombreUsuario)
+                    );
                 });
-                setVentas(ventasT);
-                setEstadoListado(false);
+               
+                return busquedaT;
+            })
+            .catch(function (error) {
+                window.alert(`error buscando venta [${error}]`);
             });
     }
 
-    if (estadoListado) {
+    async function obtenerVentas() {
+        const ventasT = await listarVentas();
+        setVentas(ventasT);
+        setEstadoListado(false);
+    }
+
+
+    if (estadoBusqueda) {
+        obtenerBusqueda();
+    }
+    else if (estadoListado) {
         obtenerVentas();
     }
 
     const cerrarModal = () => {
         setEstadoModal(false);
+        setEstadoListado(true);
     }
 
     const agregar = () => {
-        const ventaE = new VentaA(-1, "", "", "", "", "")
+        const ventaE = new VentaA(-1, "", "", "", "", "", "")
         setVentaEditada(ventaE);
         setEstadoModal(true);
     }
@@ -186,7 +183,7 @@ const Ventas = () => {
     }
 
     const confirmarEliminacion = () => {
-        fetch(`http://localhost:3010/ventas/${ventaEditada.id}`,
+        fetch(`${apiBaseUrl}/ventas/${ventaEditada.id}`,
             {
                 method: 'delete',
             })
@@ -197,7 +194,7 @@ const Ventas = () => {
                 return res.json();
             })
             .then((json) => {
-                window.alert(json.message);
+                //window.alert(json.message);
                 setEstadoListado(true);
 
             })
@@ -220,32 +217,52 @@ const Ventas = () => {
             </center>
             <ThemeProvider theme={theme}>
                 <div style={{ height: 500, width: '100%' }}>
-                    <Stack direction="row" spacing={2} justifyContent="flex-end">
-                        <Button variant="contained" startIcon={<AddCircleIcon />} onClick={agregar} >
+                    <Paper
+                        component="form"
+                        sx={{ p: '2px 4px', display: 'flex', alignItems: 'center' }}
+                        spacing={1}
+                    >
+                        <TextField
+
+                            select
+                            label="Seleccione"
+                            value={tipo}
+                            onChange={(e) => { setTipo(e.target.value) }}
+                            variant="standard"
+                            sx={{ ml: 1, flex: 1, width: 200 }}
+                        >
+                            {tipos.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                        <InputBase
+                            sx={{ ml: 1, flex: 1 }}
+                            placeholder="Buscar"
+                            inputProps={{ 'aria-label': 'buscar' }}
+                            onChange={(e) => { setDato(e.target.value) }}
+                        />
+                        <IconButton  sx={{ p: '10px' }} aria-label="search" onClick={buscar}>
+                            <SearchIcon />
+                        </IconButton>
+                        <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
+                        <Button variant="contained" startIcon={<AddCircleIcon />} sx={{ m: 0.5 }} onClick={agregar} >
                             Agregar
                         </Button>
-                        <Button variant="contained" startIcon={<EditIcon />} onClick={modificar} >
+                        <Button variant="contained" startIcon={<EditIcon />} sx={{ m: 0.5 }} onClick={modificar} >
                             Modificar
                         </Button>
-                        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={eliminar}>
+                        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} sx={{ m: 0.5 }} onClick={eliminar} >
                             Eliminar
                         </Button>
-                        <Search>
-                            <SearchIconWrapper>
-                                <SearchIcon />
-                            </SearchIconWrapper>
-                            <StyledInputBase
-                                placeholder="Buscar"
-                                inputProps={{ 'aria-label': 'search' }}
-                            />
-                        </Search>
-                    </Stack>
+                    </Paper>
                     <DataGrid
                         rows={ventas}
                         columns={columnas}
                         pageSize={7}
                         rowsPerPageOptions={[7]}
-
+                        sx={{ m: 2 }}
                         onSelectionModelChange={(idVentas) => {
 
                             const ventasSeleccionadas = ventas.filter(
@@ -260,6 +277,7 @@ const Ventas = () => {
 
 
                     />
+
 
                     <ModalEditar open={estadoModal} cerrar={cerrarModal} venta={ventaEditada} />
 
