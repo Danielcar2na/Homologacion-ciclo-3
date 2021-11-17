@@ -40,7 +40,7 @@ const ProductosView = () => {
 	const Borrar = async (id) => {
 		try {
 			const {data} = await axios.delete(
-				`http://localhost:4000/eliminar/${id}`
+				`http://localhost:3010/eliminar/${id}`
 			);
 			window.alert(data.msg);
 		} catch (error) {}
@@ -95,7 +95,7 @@ const ProductosView = () => {
 									{productos.map((item) => {
 										return (
 											<TableRow>
-												<TableCell>{item.id}</TableCell>
+												<TableCell>{item.Id}</TableCell>
 												<TableCell>{item.description}</TableCell>
 												<TableCell>{item.valor_unitario}</TableCell>
 												<TableCell>
